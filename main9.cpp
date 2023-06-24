@@ -538,7 +538,7 @@ public:
     Assign(shared_ptr<Var> left, shared_ptr<Token> op, shared_ptr<AST> right)
         : left(left), op(op), right(right)
     {
-        
+
     }
 
     virtual string toString() { stringstream ss; ss << "(" << op->toString() << ",  " << left->toString() << " , " << right->toString()<<")"; return ss.str(); }
@@ -828,22 +828,22 @@ private:
 
 class Interpreter
 {
-public:
+public: 
     Interpreter()=default;
 
     double visit(shared_ptr<AST> node)
     {
-        
+         
         if (auto bin_op = dynamic_pointer_cast<BinOp>(node))
         {
           //  cout<<node.get()->toString();
             return visit_BinOp(bin_op);
-        }
+        }  
         else if (auto num = dynamic_pointer_cast<Number>(node))
         {
-          //  cout<<node.get()->toString();
+           // cout<<node.get()->toString();
             return visit_number(num);
-        }
+        } 
          else if (auto num = dynamic_pointer_cast<UnaryOp>(node))
         {
           //  cout<<node.get()->toString();
@@ -867,8 +867,8 @@ public:
          else if (auto num = dynamic_pointer_cast<Var>(node))
         {
           //  cout<<node.get()->toString();
-             visit_Var(num);
-             return 0;
+             return visit_Var(num);
+             
         }
         else 
         {
@@ -929,21 +929,35 @@ public:
     {
         
         string var_name = node->left->value;
-        GLOBAL_SCOPE[var_name] = visit(node->right);
-        return GLOBAL_SCOPE[var_name];
-      // cout<<"assigne  :"<<var_name<<"\n";
+     
+        double result = visit(node->right);
+        GLOBAL_SCOPE[var_name] = result;
+      //  cout << "Assign "<<var_name<<" to "<<result<<endl;
+        return result;
     }
      double visit_Var(shared_ptr<Var> node)
     {
          (void)node;
       
          string var_name = node->value;
+
+         auto iter =GLOBAL_SCOPE.find(var_name);
+        if (iter != GLOBAL_SCOPE.end()) 
+        {
          double result = GLOBAL_SCOPE[var_name];
-         return result;
+         return result;        
+        } else
+        {
+            cout<<"Error in var:"<<var_name<<endl;
+        }
+
+        
+
        // cout<<"Variable: "<<var_name<< " Result: "<<result<<endl;
 
          
         // GLOBAL_SCOPE[var_name] = node;
+        return 0;
     } 
 
      void visit_NoOp(shared_ptr<NoOp> node)
