@@ -235,7 +235,7 @@ public:
                 line++;
                 cursor = 1;
             }
- 
+  
             if (std::isspace(current) )
             {
                 skip_whitespace();
@@ -374,7 +374,7 @@ private:
         auto iter =keywords.find(result);
         if (iter != keywords.end()) 
         {
-            cout<<"KEY  "<<result<<endl;
+           // cout<<"KEY  "<<result<<endl;
             if(result.compare("begin")==0)
                 t->type = TokenType::TK_BEGIN;
             else if(result.compare("end")==0)
@@ -382,7 +382,7 @@ private:
                 
         }else
         {
-             cout<<"VARIABLE:  "<<result<<endl;
+            // cout<<"VARIABLE:  "<<result<<endl;
             t->type = TokenType::TK_ID;
         }
         t->value = result;
@@ -524,7 +524,7 @@ class Var: public AST
     string value;
     Var(){}
  
-    virtual string toString() { stringstream ss; ss << "(" << token->toString()  << ")"; return ss.str(); }
+    virtual string toString() { stringstream ss; ss << "VAR(" << value  << ")"; return ss.str(); }
 };
 
 
@@ -538,6 +538,7 @@ public:
     Assign(shared_ptr<Var> left, shared_ptr<Token> op, shared_ptr<AST> right)
         : left(left), op(op), right(right)
     {
+        
     }
 
     virtual string toString() { stringstream ss; ss << "(" << op->toString() << ",  " << left->toString() << " , " << right->toString()<<")"; return ss.str(); }
@@ -588,7 +589,7 @@ public:
     bool match(TokenType token_type)
     {
         TokenType type =current_token->type;
-        if (current_token->type == token_type)
+        if (type == token_type)
         {
             advance();
             return true;
@@ -763,19 +764,22 @@ public:
         shared_ptr<AST> node=nullptr;
         if (current_token->type==TokenType::TK_BEGIN)
         {
-                node = compound_statement();
+
+          node = compound_statement();
         }else
-        if (current_token->type==TokenType::TK_ID)
-        {
+        if (current_token->type==TokenType::TK_ID  )
+        { 
             node = assignment_statement();
         } else
         {
+           // cout<<"empy "<<tokeToString(current_token->type)<<endl;
             node = empty();
         }
         return node;
     }
     shared_ptr<AST> assignment_statement()
     {
+        
         shared_ptr<Var> left =variable();
         shared_ptr<Token> token = current_token;
         eat(TokenType::TK_ASSIGN);
@@ -786,6 +790,7 @@ public:
 
     shared_ptr<Var> variable()
     {
+    
         shared_ptr<Var> node =  make_shared<Var>();
         node->token = current_token;
         node->value = current_token->Value<string>();
@@ -844,7 +849,32 @@ public:
           //  cout<<node.get()->toString();
             return visit_UnaryOp(num);
         }
-        else
+        else if (auto num = dynamic_pointer_cast<Compound>(node))
+        {
+          //  cout<<node.get()->toString();
+             return visit_Compound(num);
+        }
+         else if (auto num = dynamic_pointer_cast<Assign>(node))
+        {
+          //  cout<<node.get()->toString();
+             return visit_Assign(num);
+        }
+         else if (auto num = dynamic_pointer_cast<NoOp>(node))
+        {
+          //  cout<<node.get()->toString();
+             visit_NoOp(num);
+        }
+         else if (auto num = dynamic_pointer_cast<Var>(node))
+        {
+          //  cout<<node.get()->toString();
+             visit_Var(num);
+             return 0;
+        }
+        else 
+        {
+             
+            cout<<"Unknow Node in Visit "<<node.get()->toString();
+        }
             return 0;
     }
 
@@ -880,34 +910,43 @@ public:
         return 0;
     }
 
-    void visit_Compound(shared_ptr<Compound> node)
+    double visit_Compound(shared_ptr<Compound> node)
     {
+            double result=0;
             for (auto &cmp : node->children)
             {
-                visit(cmp);
+                result+=visit(cmp);
             }
-    }
-    
+            return result;
+    } 
+     
     double visit_number(shared_ptr<Number> node)
     {
         return node->value;
     }
     
-    void visit_Assign(shared_ptr<Assign> node)
+    double visit_Assign(shared_ptr<Assign> node)
     {
         
         string var_name = node->left->value;
-
-       cout<<"visit_Assign\n";
+        GLOBAL_SCOPE[var_name] = visit(node->right);
+        return GLOBAL_SCOPE[var_name];
+      // cout<<"assigne  :"<<var_name<<"\n";
     }
-     void visit_Var(shared_ptr<Var> node)
+     double visit_Var(shared_ptr<Var> node)
     {
          (void)node;
-         cout<<"visit_Var\n";
+      
          string var_name = node->value;
-    }
+         double result = GLOBAL_SCOPE[var_name];
+         return result;
+       // cout<<"Variable: "<<var_name<< " Result: "<<result<<endl;
 
-     void visit_NoOp(shared_ptr<Number> node)
+         
+        // GLOBAL_SCOPE[var_name] = node;
+    } 
+
+     void visit_NoOp(shared_ptr<NoOp> node)
     {
         (void)node;
         //faz nada
@@ -920,10 +959,17 @@ public:
             return 0;
         }
         return visit(tree);
+    } 
+    void Trace()
+    { 
+        for (auto &value: GLOBAL_SCOPE)
+        {
+            cout<<"Var ("<<value.first<< ") Value: ("<< value.second<<")"<<endl;
+        }
     }
 private:
   
-    std::unordered_map<string,shared_ptr<AST>> GLOBAL_SCOPE;
+    std::unordered_map<string,double> GLOBAL_SCOPE;
 
 };
 
@@ -946,9 +992,8 @@ int main()
             if (tree != nullptr)
             {                    
                Interpreter interpreter;
-               double result = interpreter.interpret(tree);
-               cout  << endl;
-               cout << "RESULT: " << result << endl;
+               interpreter.interpret(tree);
+               interpreter.Trace();
             } else
             {
                 cout << "Error: (main) tree is null" << endl;
